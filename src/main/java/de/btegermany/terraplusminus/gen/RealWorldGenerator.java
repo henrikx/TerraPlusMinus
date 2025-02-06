@@ -70,7 +70,7 @@ public class RealWorldGenerator extends ChunkGenerator {
             FARMLAND,
             MYCELIUM,
             SNOW
-    );
+    ); 
 
     public RealWorldGenerator(int yOffset) {
 
