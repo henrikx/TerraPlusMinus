@@ -70,7 +70,7 @@ public class RealWorldGenerator extends ChunkGenerator {
             FARMLAND,
             MYCELIUM,
             SNOW
-    ); 
+    );
 
     public RealWorldGenerator(int yOffset) {
 
@@ -152,7 +152,7 @@ public class RealWorldGenerator extends ChunkGenerator {
                         STONE
                 );
                 chunkData.setRegion(
-                        x, groundHeight - 10, z,
+                        x, groundHeight + 1, z,
                         x + 1, waterHeight + 1, z + 1,
                         WATER
                 );
@@ -170,32 +170,42 @@ public class RealWorldGenerator extends ChunkGenerator {
         CachedChunkData terraData = this.getTerraChunkData(chunkX, chunkZ);
         final int minWorldY = worldInfo.getMinHeight();
         final int maxWorldY = worldInfo.getMaxHeight();
+
         for (int x = 0; x < 16; x++) {
             for (int z = 0; z < 16; z++) {
-
                 int groundY = terraData.groundHeight(x, z) + this.yOffset;
-
-                // We do that for each column, so it does not depend on the configuration but only on the seed
-                int startMountainHeight = random.nextInt(7500, 7520);
+                int waterY = terraData.waterHeight(x, z) + this.yOffset;
 
                 if (groundY < minWorldY || groundY >= maxWorldY) {
-                    continue; // We are not within vertical bounds, continue
+                    continue; // Out of vertical bounds
                 }
 
-                Material material;
+                // Check for an ocean column:
+                // It’s ocean if water level is exactly one block above ground level.
+                if (waterY == groundY + 1) {
+                    // Instead of placing water above ground, we want to extend water downward.
+                    int desiredOceanDepth = 10;
+                    // Since the normal water level is at groundY+1, we compute the bottom as:
+                    int waterBottom = Math.max(minWorldY, groundY + 1 - desiredOceanDepth);
+                    // And fill water up to groundY+1. (Terrain will be generated starting at groundY+2.)
+                    chunkData.setRegion(x, waterBottom, z, x + 1, groundY + 2, z + 1, WATER);
+                    // Skip further processing so that we don't place a surface block here.
+                    continue;
+                }
 
+                // For non-ocean columns, follow the existing logic.
+                int startMountainHeight = random.nextInt(7500, 7520);
+                Material material;
                 BlockState state = terraData.surfaceBlock(x, z);
                 if (state != null) {
-                    // Terra--'s OSM config says a feature should be drawn there, let's transform it to respect our config
+                    // If Terra provides a feature here, use our mapping.
                     material = this.materialMapping.get(state.getBlock().toString());
                     if (material == null) {
-                        // We don't know what material this is, let's respect what the Terra-- configuration says
                         material = BukkitBindings.getAsBlockData(state).getMaterial();
                     }
                 } else if (groundY >= startMountainHeight) {
-                    material = STONE; // Mountains stare bare
+                    material = STONE; // Mountains remain bare.
                 } else {
-                    // Fallback to a generic block that matches the biome
                     Biome biome = chunkData.getBiome(x, groundY, z);
                     material = switch (biome) {
                         case DESERT -> Material.SAND;
@@ -204,17 +214,19 @@ public class RealWorldGenerator extends ChunkGenerator {
                     };
                 }
 
-                // We don't want grass, snow, and all underwater
-                boolean isUnderWater = groundY + 1 >= maxWorldY || chunkData.getBlockData(x, groundY + 1, z).getMaterial().equals(WATER);
+                // Avoid placing grass-like blocks underwater.
+                boolean isUnderWater = groundY + 1 >= maxWorldY ||
+                        chunkData.getBlockData(x, groundY + 1, z).getMaterial().equals(WATER);
                 if (isUnderWater && GRASS_LIKE_MATERIALS.contains(material)) {
-                    material = WATER;
+                    material = DIRT;
                 }
 
+                // Set the top surface block.
                 chunkData.setBlock(x, groundY, z, material);
-
             }
         }
     }
+
 
     private CachedChunkData getTerraChunkData(int chunkX, int chunkZ) {
         try {
