@@ -207,7 +207,7 @@ public class RealWorldGenerator extends ChunkGenerator {
                 // We don't want grass, snow, and all underwater
                 boolean isUnderWater = groundY + 1 >= maxWorldY || chunkData.getBlockData(x, groundY + 1, z).getMaterial().equals(WATER);
                 if (isUnderWater && GRASS_LIKE_MATERIALS.contains(material)) {
-                    material = DIRT;
+                    material = WATER;
                 }
 
                 chunkData.setBlock(x, groundY, z, material);
