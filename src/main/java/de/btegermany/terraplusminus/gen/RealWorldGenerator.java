@@ -153,7 +153,7 @@ public class RealWorldGenerator extends ChunkGenerator {
                 );
                 chunkData.setRegion(
                         x, groundHeight + 1, z,
-                        x + 1, waterHeight + 1, z + 1,
+                        x + 1, waterHeight - 10, z + 1,
                         WATER
                 );
             }
